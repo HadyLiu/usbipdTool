@@ -68,8 +68,7 @@ impl AttachDialog {
 
     pub fn show(&mut self, ui: &mut egui::Ui, tr: &I18n, distros: &[WslDistro], dark: bool) -> Option<AttachOutcome> {
         let mut outcome = None;
-        ui.set_min_width(440.0);
-        ui.set_max_width(520.0);
+        ui.set_width(520.0);
         ui.heading(tr.tr("attach_dialog.title"));
         ui.add_space(4.0);
         ui.add(
@@ -79,7 +78,6 @@ impl AttachDialog {
         ui.add_space(6.0);
 
         egui::Frame::group(ui.style()).show(ui, |ui| {
-            ui.set_min_width(ui.available_width());
             ui.strong(tr.tr("attach_dialog.group_wsl"));
             egui::Grid::new("attach_form").num_columns(2).spacing([10.0, 8.0]).show(ui, |ui| {
                 ui.label("");
@@ -126,7 +124,7 @@ impl AttachDialog {
         let preview = tr.trf("attach_dialog.preview", &[("cmd", &display_command(&self.args()))]);
         ui.add(egui::Label::new(RichText::new(preview).color(theme::preview_color(dark))).wrap());
         ui.add_space(8.0);
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+        super::dialog_layout::buttons(ui, |ui| {
             if ui.button(tr.tr("common.cancel")).clicked() {
                 outcome = Some(AttachOutcome::Cancel);
             }

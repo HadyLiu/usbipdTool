@@ -69,43 +69,30 @@ wsl -e bash -lc "cd /home/hady/workSpaceWsl/usbipdTool && ./build.sh"
 
 ## GitHub Actions 与发布
 
-把本仓库推到 GitHub 后，工作流会自动运行（无需改文件名，镜像名为 `ghcr.io/<owner>/<repo>`，自动转小写）。本地仍用 `./build.sh`。
+统一工作流： [`.github/workflows/ci.yml`](.github/workflows/ci.yml)。推送 `main` / `master` 或提交 PR 时，先用 Docker 编译并运行测试，上传 exe 与 SHA256 校验文件。
 
-| 工作流 | 触发 | 做什么 |
-|--------|------|--------|
-| [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | 推送到 `main` / `master`，或提交 Pull Request | 用现有 `Dockerfile` 构建交叉编译镜像，运行 `./build.sh`（单元测试 + 产出 `dist/UsbipdTool.exe`），并把 exe 上传为 Artifact。推送到主分支时，再把构建镜像推到 GitHub Container Registry，标签为分支名（如 `main`）和 `sha-<7位>`。 |
-| [`.github/workflows/release.yml`](.github/workflows/release.yml) | 推送形如 `v0.1.1` 的 tag | 用 tag 写入版本号（`VERSION=0.1.1`），再 `./build.sh`；创建 GitHub Release，附带 `UsbipdTool.exe` 与 `UsbipdTool.exe.sha256`；并把构建镜像推到 GHCR，标签为版本号和 `latest`。 |
+主分支编译结束后会拉取标签，并检查**本次构建的确切提交**：只有 `v<Cargo.toml 版本>`（例如 `v0.1.1`）精确指向该提交，才创建/更新对应 GitHub Release，并发布 GHCR 构建镜像。没有对应标签则仅保留构建产物，不会发布历史版本。一次主分支推送只产生一个工作流运行，所有步骤在同一任务中依次执行：编译/测试 → 检查该提交的版本标签 → 按条件发布。保留 PR 编译验证，但**单独推送标签不会触发工作流**。
 
-发布新版本（请先把 `Cargo.toml` 里的 `version` 改成要发布的号，再打 tag）：
+发布示例（请先更新并提交 Cargo.toml 版本）：
 
 ```bash
-# 假设当前要发布 0.1.1
-git tag v0.1.1
-git push origin v0.1.1
+git tag -a v0.1.1 -m "发布 v0.1.1"
+git push --atomic origin main v0.1.1
 ```
 
-不要漏掉前缀 `v`。Release 工作流会去掉 `v` 后写入 Cargo 版本，从而同步到 exe 的文件属性、清单和界面上的版本号。
+标签必须在主分支构建结束、检查标签之前到达远端，推荐上面的原子推送，让 main 与标签一起生效。若标签晚于本次检查，单独推标签不会补发；可在标签到达后手动重新运行该主分支构建。工作流使用完整历史和标签，绝不选择与已构建提交无关的“最新标签”。版本保持与 Cargo.toml 一致，标签必须匹配该版本。
 
 ### 拉取构建镜像（GHCR）
 
-GHCR 上发布的是**交叉编译用的构建镜像**（Rust + mingw），不是 Windows 程序本身；Windows 可执行文件请到 GitHub Release 下载。
-
-新建仓库时，包默认可能是私有的，可在 GitHub → Packages 里改成 Public。拉取示例：
+镜像名为 `ghcr.io/<owner>/<repo>`（自动转小写），发布标签为版本号（如 `0.1.1`）和 `latest`。这里是 Rust + mingw 的**交叉编译环境**，Windows 程序请到 GitHub Release 下载。公开包可直接拉取；私有包需要具有 `read:packages` 权限的正常 GitHub 登录。新建包默认可能是私有的，可在 GitHub Packages 中改为 Public。
 
 ```bash
-# 公开包可直接拉取；私有包需先登录（用有 read:packages 权限的 PAT 或 GITHUB_TOKEN）
-echo $GITHUB_TOKEN | docker login ghcr.io -u USERNAME --password-stdin
-
+echo "$GITHUB_TOKEN" | docker login ghcr.io -u USERNAME --password-stdin
 docker pull ghcr.io/<owner>/<repo>:0.1.1
-# 或最新版、主分支构建：
 docker pull ghcr.io/<owner>/<repo>:latest
-docker pull ghcr.io/<owner>/<repo>:main
-
-# 用该镜像在本地交叉编译（与 ./build.sh 相同）
-IMAGE=ghcr.io/<owner>/<repo>:0.1.1 ./build.sh
 ```
 
-将 `<owner>/<repo>` 换成你的 GitHub 用户名（或组织）和仓库名，并改为小写。
+本地构建仍执行 `./build.sh`（使用现有 Dockerfile），不需要 GitHub Actions。
 
 ## 项目结构
 
@@ -132,7 +119,7 @@ src/
     └── platform.rs      # 系统深色检测、runas 提权
 resources/               # icon.ico、i18n 词典、清单、.rc
 tests/core_tests.rs      # 解析器等单元测试（含本机 usbipd 5.3 真实输出）
-.github/workflows/       # CI（push/PR）与 Release（v* tag）
+.github/workflows/       # 统一串行 CI/Release（主分支构建后检查同提交版本标签）
 ```
 
 ## 许可

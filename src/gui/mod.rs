@@ -6,3 +6,6 @@ pub mod hotplug;
 pub mod platform;
 pub mod theme;
 pub mod worker;
+
+use eframe::egui;
+pub mod dialog_layout;

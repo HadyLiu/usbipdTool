@@ -651,16 +651,15 @@ impl UsbipdApp {
         let dark = self.dark;
         let distros = &self.distros;
         // 返回值：Some(true)=确认/接受，Some(false)=取消
-        let result: Option<bool> = egui::Modal::new(egui::Id::unique("usbipd_modal"))
+        let result: Option<bool> = egui::Modal::new(egui::Id::unique(match front {
+            Dialog::Attach(_) => "usbipd_attach_modal",
+            _ => "usbipd_message_modal",
+        }))
             .show(ctx, |ui| match front {
                 Dialog::Fatal(t) | Dialog::Warn(t) => {
-                    ui.set_max_width(460.0);
-                    ui.strong("UsbipdTool");
-                    ui.add_space(6.0);
-                    ui.add(egui::Label::new(t.as_str()).wrap());
-                    ui.add_space(10.0);
+                    super::dialog_layout::message(ui, t);
                     let mut r = None;
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    super::dialog_layout::buttons(ui, |ui| {
                         if ui.button(tr.tr("common.ok")).clicked() {
                             r = Some(true);
                         }
@@ -671,13 +670,9 @@ impl UsbipdApp {
                     r
                 }
                 Dialog::Confirm(t, _) => {
-                    ui.set_max_width(460.0);
-                    ui.strong("UsbipdTool");
-                    ui.add_space(6.0);
-                    ui.add(egui::Label::new(t.as_str()).wrap());
-                    ui.add_space(10.0);
+                    super::dialog_layout::message(ui, t);
                     let mut r = None;
-                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    super::dialog_layout::buttons(ui, |ui| {
                         if ui.button(tr.tr("common.no")).clicked() {
                             r = Some(false);
                         }

@@ -2202,10 +2202,11 @@ checksum = "c6f5d3c3b1bf09027a88a6bc961fc00497d651009560b5463668dc81b0fa87a8"
 
 [[package]]
 name = "usbipd-tool"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "eframe",
+ "egui",
  "egui_extras",
  "embed-resource",
  "encoding_rs",

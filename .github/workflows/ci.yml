@@ -1,0 +1,49 @@
+# 推送到 main/master 或提交 PR 时：构建交叉编译镜像、跑测试、产出 Windows exe。
+# 推送到 main/master 时还会把构建镜像推到 GitHub Container Registry。
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    name: Test and cross-compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Image name (lowercase)
+        run: echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - name: Build image, test, and produce UsbipdTool.exe
+        env:
+          IMAGE: ${{ env.IMAGE_NAME }}:ci
+        run: chmod +x build.sh && ./build.sh
+
+      - name: Upload exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: UsbipdTool
+          path: dist/UsbipdTool.exe
+          if-no-files-found: error
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push build image (branch + sha)
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          SHORT_SHA="$(echo '${{ github.sha }}' | cut -c1-7)"
+          docker tag "${IMAGE_NAME}:ci" "${IMAGE_NAME}:${{ github.ref_name }}"
+          docker tag "${IMAGE_NAME}:ci" "${IMAGE_NAME}:sha-${SHORT_SHA}"
+          docker push "${IMAGE_NAME}:${{ github.ref_name }}"
+          docker push "${IMAGE_NAME}:sha-${SHORT_SHA}"

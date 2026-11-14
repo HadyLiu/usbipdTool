@@ -1,0 +1,10 @@
+Connected:
+BUSID  VID:PID    DEVICE                                                        STATE
+1-5    8087:0032  英特尔(R) 无线 Bluetooth(R)                                        Not shared
+6-1    1a86:7523  USB-SERIAL CH340 (COM4)                                       Shared
+9-1    258a:010c  USB 输入设备                                                      Not shared
+10-1   25a7:fa61  USB 输入设备                                                      Not shared
+
+Persisted:
+GUID                                  DEVICE
+

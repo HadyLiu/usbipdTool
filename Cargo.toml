@@ -1,0 +1,53 @@
+[package]
+name = "usbipd-tool"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+description = "UsbipdTool (Rust) — a small GUI wrapper around usbipd-win for attaching USB devices to WSL 2"
+license = "MIT"
+build = "build.rs"
+
+[lib]
+name = "usbipd_tool"
+path = "src/lib.rs"
+
+[[bin]]
+name = "UsbipdTool"
+path = "src/main.rs"
+required-features = ["gui"]
+
+[features]
+default = ["gui"]
+# GUI 依赖；在 Linux 容器里跑核心层单元测试时可用 --no-default-features 关闭
+gui = ["dep:eframe", "dep:egui_extras", "dep:image", "dep:chrono"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+encoding_rs = "0.8"
+chrono = { version = "0.4", default-features = false, features = ["clock"], optional = true }
+eframe = { version = "0.37", default-features = false, features = ["default_fonts", "glow", "clipboard"], optional = true }
+egui_extras = { version = "0.37", default-features = false, optional = true }
+image = { version = "0.25", default-features = false, features = ["png"], optional = true }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61", features = [
+    "Win32_Foundation",
+    "Win32_Globalization",
+    "Win32_Devices_Usb",
+    "Win32_Graphics_Gdi",
+    "Win32_System_LibraryLoader",
+    "Win32_System_Registry",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[build-dependencies]
+embed-resource = "3"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

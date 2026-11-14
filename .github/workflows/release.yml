@@ -1,0 +1,72 @@
+# 推送形如 v0.1.0 的 git tag 时：按 tag 写入版本号、交叉编译、
+# 创建 GitHub Release（附带 exe 与 SHA256），并把构建镜像推到 ghcr.io。
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    name: Build, release, and publish image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Version from tag
+        run: |
+          set -euo pipefail
+          V="${GITHUB_REF_NAME#v}"
+          echo "VERSION=$V" >> "$GITHUB_ENV"
+          echo "IMAGE_NAME=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
+      - name: Build image, test, and produce UsbipdTool.exe
+        env:
+          IMAGE: ${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+          VERSION: ${{ env.VERSION }}
+        run: chmod +x build.sh && ./build.sh
+
+      - name: SHA256 checksum
+        run: |
+          (cd dist && sha256sum UsbipdTool.exe > UsbipdTool.exe.sha256)
+          cat dist/UsbipdTool.exe.sha256
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: UsbipdTool-${{ env.VERSION }}
+          path: |
+            dist/UsbipdTool.exe
+            dist/UsbipdTool.exe.sha256
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          FILES=(dist/UsbipdTool.exe dist/UsbipdTool.exe.sha256)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${FILES[@]}" --clobber
+          else
+            gh release create "$TAG" "${FILES[@]}" \
+              --title "UsbipdTool ${TAG}" \
+              --generate-notes
+          fi
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Push build image (version + latest)
+        run: |
+          set -euo pipefail
+          docker tag "${IMAGE_NAME}:${VERSION}" "${IMAGE_NAME}:latest"
+          docker push "${IMAGE_NAME}:${VERSION}"
+          docker push "${IMAGE_NAME}:latest"

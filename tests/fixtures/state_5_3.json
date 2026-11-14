@@ -1,0 +1,40 @@
+{
+  "Devices": [
+    {
+      "BusId": "6-1",
+      "ClientIPAddress": null,
+      "Description": "USB-SERIAL CH340 (COM4)",
+      "InstanceId": "USB\\VID_1A86&PID_7523\\7&2E5F6FA0&0&1",
+      "IsForced": false,
+      "PersistedGuid": "923960de-4765-4a17-bf9a-0c60dfc9d758",
+      "StubInstanceId": null
+    },
+    {
+      "BusId": "9-1",
+      "ClientIPAddress": null,
+      "Description": "USB 输入设备",
+      "InstanceId": "USB\\VID_258A&PID_010C\\7&17B12552&0&1",
+      "IsForced": false,
+      "PersistedGuid": null,
+      "StubInstanceId": null
+    },
+    {
+      "BusId": "10-1",
+      "ClientIPAddress": null,
+      "Description": "USB 输入设备",
+      "InstanceId": "USB\\VID_25A7&PID_FA61\\8&20DE8E72&0&1",
+      "IsForced": false,
+      "PersistedGuid": null,
+      "StubInstanceId": null
+    },
+    {
+      "BusId": "1-5",
+      "ClientIPAddress": null,
+      "Description": "英特尔(R) 无线 Bluetooth(R)",
+      "InstanceId": "USB\\VID_8087&PID_0032\\6&6E206E&0&5",
+      "IsForced": false,
+      "PersistedGuid": null,
+      "StubInstanceId": null
+    }
+  ]
+}

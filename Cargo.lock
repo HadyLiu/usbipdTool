@@ -947,6 +947,8 @@ dependencies = [
  "num-traits",
  "png",
  "tiff",
+ "zune-core",
+ "zune-jpeg",
 ]
 
 [[package]]
@@ -2202,7 +2204,7 @@ checksum = "c6f5d3c3b1bf09027a88a6bc961fc00497d651009560b5463668dc81b0fa87a8"
 
 [[package]]
 name = "usbipd-tool"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "chrono",
  "eframe",

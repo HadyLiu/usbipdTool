@@ -19,6 +19,7 @@ fn defaults() -> Map<String, Value> {
     m.insert("last_wsl_distro".into(), Value::String(String::new()));
     m.insert("last_host_ip".into(), Value::String(String::new()));
     m.insert("auto_attach_default".into(), Value::Bool(false));
+    m.insert("use_default_wsl_distro".into(), Value::Bool(true));
     m
 }
 
@@ -102,6 +103,14 @@ impl Config {
         self.data.insert(key.into(), Value::Bool(v));
     }
 
+    pub fn get_json(&self, key: &str) -> Option<&Value> {
+        self.data.get(key)
+    }
+
+    pub fn set_json(&mut self, key: &str, v: Value) {
+        self.data.insert(key.into(), v);
+    }
+
     pub fn language(&self) -> String {
         self.get_str("language")
     }
@@ -119,5 +128,18 @@ impl Config {
     }
     pub fn auto_attach_default(&self) -> bool {
         self.get_bool("auto_attach_default")
+    }
+    /// Missing key (older configs) means use the WSL default distro.
+    pub fn use_default_wsl_distro(&self) -> bool {
+        match self.data.get("use_default_wsl_distro") {
+            Some(Value::Bool(b)) => *b,
+            Some(Value::Number(n)) => n.as_i64().unwrap_or(1) != 0,
+            Some(Value::String(s)) => {
+                let s = s.trim().to_ascii_lowercase();
+                s != "false" && s != "0" && !s.is_empty()
+            }
+            None => true,
+            _ => true,
+        }
     }
 }

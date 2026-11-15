@@ -1,2 +1,4 @@
-target
-dist
+# Context root is the repository (used with `-f docker/Dockerfile`).
+# The image is a compile toolchain only; project sources are bind-mounted at run time.
+# Ignore everything so the uploaded context stays tiny.
+*

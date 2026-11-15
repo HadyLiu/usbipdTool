@@ -19,9 +19,38 @@ fn file_version(v: &str) -> (u16, u16, u16, u16) {
     )
 }
 
+
+fn find_icon_source(manifest_dir: &Path) -> PathBuf {
+    // Prefer an explicit PNG if present; otherwise the current JPEG in resources/.
+    let candidates = [
+        manifest_dir.join("resources/icon.png"),
+        manifest_dir.join("resources/icon.jpg"),
+        manifest_dir.join("resources/icon.jpeg"),
+    ];
+    if let Some(p) = candidates.into_iter().find(|p| p.is_file()) {
+        return p;
+    }
+    panic!(
+        "icon source not found; expected resources/icon.png or resources/icon.jpg under {}",
+        manifest_dir.display()
+    );
+}
+
 fn main() {
     println!("cargo:rerun-if-changed=resources/app.manifest");
-    println!("cargo:rerun-if-changed=resources/icon.ico");
+    println!("cargo:rerun-if-changed=resources/icon.png");
+    println!("cargo:rerun-if-changed=resources/icon.jpg");
+    println!("cargo:rerun-if-changed=resources/icon.jpeg");
+    let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+    let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+    let icon_src = find_icon_source(&manifest_dir);
+    eprintln!("==> icon source: {}", icon_src.display());
+    let img = image::open(&icon_src)
+        .unwrap_or_else(|e| panic!("decode icon source {}: {e}", icon_src.display()))
+        .resize_exact(256, 256, image::imageops::FilterType::Lanczos3)
+        .to_rgba8();
+    img.save_with_format(out_dir.join("icon.png"), image::ImageFormat::Png).expect("write window icon");
+    img.save_with_format(out_dir.join("icon.ico"), image::ImageFormat::Ico).expect("write Windows icon");
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("windows") {
         return;
     }
@@ -33,7 +62,7 @@ fn main() {
 
     let manifest_dir = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
-    let icon = rc_escape(&manifest_dir.join("resources/icon.ico"));
+    let icon = rc_escape(&out_dir.join("icon.ico"));
     let manifest_src = manifest_dir.join("resources/app.manifest");
     let manifest_out = out_dir.join("app.manifest");
 

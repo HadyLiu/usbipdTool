@@ -6,8 +6,7 @@ mod gui;
 use eframe::egui;
 
 fn load_icon() -> Option<egui::IconData> {
-    let ico = include_bytes!("../resources/icon.ico");
-    let png = usbipd_tool::core::icon::ico_png_entry(ico, 64)?;
+    let png = include_bytes!(concat!(env!("OUT_DIR"), "/icon.png"));
     let img = image::load_from_memory_with_format(png, image::ImageFormat::Png).ok()?.into_rgba8();
     let (w, h) = img.dimensions();
     Some(egui::IconData { rgba: img.into_raw(), width: w, height: h })
@@ -26,8 +25,8 @@ fn main() -> eframe::Result {
 
     let mut viewport = egui::ViewportBuilder::default()
         .with_title("UsbipdTool")
-        .with_inner_size([880.0, 560.0])
-        .with_min_inner_size([640.0, 400.0]);
+        .with_inner_size(gui::window_layout::DEFAULT_CLIENT_SIZE)
+        .with_min_inner_size(gui::window_layout::MIN_CLIENT_SIZE);
     if let Some(icon) = load_icon() {
         viewport = viewport.with_icon(icon);
     }
@@ -35,6 +34,23 @@ fn main() -> eframe::Result {
     eframe::run_native(
         "UsbipdTool",
         options,
-        Box::new(|cc| Ok(Box::new(gui::app::UsbipdApp::new(cc)))),
+        Box::new(|cc| {
+            // ViewportBuilder sizes are logical points; the reference window is physical pixels.
+            // Apply scale-adjusted inner and min sizes together so a 1.0-scale min width
+            // cannot block the 150% default, and so the user cannot shrink narrower than default.
+            let scale = cc.egui_ctx.native_pixels_per_point().unwrap_or(1.0);
+            let frame = cc.egui_ctx.input(|i| {
+                let viewport = i.viewport();
+                match (viewport.outer_rect, viewport.inner_rect) {
+                    (Some(outer), Some(inner)) if outer.width() >= inner.width() && outer.height() > inner.height() => outer.size() - inner.size(),
+                    _ => egui::vec2(16.0, 39.0), // standard Windows decorated-frame fallback, in points
+                }
+            });
+            let inner = gui::window_layout::initial_client_size(scale, frame);
+            let min = gui::window_layout::min_client_size(scale, frame);
+            cc.egui_ctx.send_viewport_cmd(egui::ViewportCommand::MinInnerSize(min));
+            cc.egui_ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(inner));
+            Ok(Box::new(gui::app::UsbipdApp::new(cc)))
+        }),
     )
 }

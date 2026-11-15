@@ -22,7 +22,7 @@ pub enum OpKind {
 pub enum Msg {
     Version(Option<String>),
     ScanDone(Result<(Vec<UsbDevice>, Option<String>), String>),
-    Distros(Vec<WslDistro>),
+    Distros { generation: u64, result: Result<Vec<WslDistro>, String> },
     OpDone { kind: OpKind, busid: String, res: CommandResult },
     /// 后台进程（--auto-attach）实时输出的一行
     Log(String),
@@ -95,6 +95,10 @@ fn pump_lines<R: Read + Send + 'static>(r: R, prefix: &'static str, bus: Bus) {
 impl AutoAttach {
     pub fn is_running(&self, busid: &str) -> bool {
         self.procs.lock().map(|m| m.contains_key(busid)).unwrap_or(false)
+    }
+
+    pub fn running_busids(&self) -> Vec<String> {
+        self.procs.lock().map(|m| m.keys().cloned().collect()).unwrap_or_default()
     }
 
     /// 启动常驻附加进程；失败时返回 CommandResult 错误。

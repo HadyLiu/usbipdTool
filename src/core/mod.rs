@@ -1,6 +1,9 @@
 //! UsbipdTool 核心层：数据模型、输出解析、命令执行、配置与 i18n。
 pub mod actions;
+pub mod attach_prefs;
 pub mod config;
+pub mod device_intent;
+pub mod device_filter;
 pub mod decode;
 pub mod i18n;
 pub mod icon;

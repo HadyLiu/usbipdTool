@@ -31,10 +31,47 @@ jobs:
       - name: Image name (lowercase)
         run: echo "IMAGE_NAME=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
 
-      - name: Build image, test, and produce UsbipdTool.exe
+      - name: Resolve toolchain image fingerprint
+        id: toolchain
+        run: |
+          set -euo pipefail
+          chmod +x script/build-image.sh script/build.sh
+          FP=$(./script/build-image.sh --print-fingerprint)
+          IMAGE="${IMAGE_NAME}:toolchain-${FP}"
+          echo "fingerprint=$FP" >> "$GITHUB_OUTPUT"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          echo "Resolved compiler toolchain image $IMAGE"
+
+      # Same-repo push/PR may log in to pull a private GHCR package. Fork PRs do not
+      # get a login (no publish credentials) and fall back to an anonymous pull or a local build.
+      - name: Log in to GHCR
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
         env:
-          IMAGE: ${{ env.IMAGE_NAME }}:ci
-        run: chmod +x build.sh && ./build.sh
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Pull prebuilt toolchain or build on cache miss
+        id: image
+        run: |
+          set -euo pipefail
+          BUILT=false
+          if docker pull "$IMAGE"; then
+            echo "Pulled prebuilt toolchain $IMAGE; will compile the app only."
+          else
+            echo "No prebuilt image for this Dockerfile fingerprint; building with script/build-image.sh"
+            ./script/build-image.sh
+            BUILT=true
+          fi
+          echo "built=$BUILT" >> "$GITHUB_OUTPUT"
+
+      # Publish the immutable fingerprint tag only from a trusted main/master push,
+      # and only when this run actually built the image. Fork/PR never publish.
+      - name: Publish toolchain image on cache miss
+        if: github.event_name == 'push' && steps.image.outputs.built == 'true'
+        run: docker push "$IMAGE"
+
+      - name: Test and produce UsbipdTool.exe
+        run: ./script/build.sh
 
       - name: Find version tag on this exact built commit
         id: version
@@ -91,19 +128,14 @@ jobs:
               --title "UsbipdTool ${TAG}" --generate-notes --notes "$MARKER"
           fi
 
-      - name: Log in to GHCR
-        if: steps.version.outputs.tag != ''
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: echo "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
-
+      # Login already ran at the start of this trusted push job when a version tag is present.
       - name: Push versioned build image
         if: steps.version.outputs.tag != ''
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-          docker tag "${IMAGE_NAME}:ci" "${IMAGE_NAME}:${VERSION}"
-          docker tag "${IMAGE_NAME}:ci" "${IMAGE_NAME}:latest"
+          docker tag "$IMAGE" "${IMAGE_NAME}:${VERSION}"
+          docker tag "$IMAGE" "${IMAGE_NAME}:latest"
           docker push "${IMAGE_NAME}:${VERSION}"
           docker push "${IMAGE_NAME}:latest"

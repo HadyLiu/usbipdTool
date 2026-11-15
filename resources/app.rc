@@ -1,11 +1,11 @@
-// 参考用。实际嵌入的 VERSIONINFO / 路径由 build.rs 根据 Cargo.toml 的 version 生成。
+// 参考用。实际图标由 build.rs 从 resources/icon.jpg（若存在则优先 resources/icon.png）生成；VERSIONINFO 来自 Cargo.toml。
 #pragma code_page(65001)
 1 ICON "icon.ico"
 1 24 "app.manifest"
 
 1 VERSIONINFO
-FILEVERSION 0,1,1,0
-PRODUCTVERSION 0,1,1,0
+FILEVERSION 0,1,2,0
+PRODUCTVERSION 0,1,2,0
 FILEOS 0x40004
 FILETYPE 0x1
 BEGIN
@@ -14,9 +14,9 @@ BEGIN
     BLOCK "040904B0"
     BEGIN
       VALUE "FileDescription", "UsbipdTool - USBIPD WSL USB Helper"
-      VALUE "FileVersion", "0.1.1"
+      VALUE "FileVersion", "0.1.2"
       VALUE "ProductName", "UsbipdTool"
-      VALUE "ProductVersion", "0.1.1"
+      VALUE "ProductVersion", "0.1.2"
       VALUE "OriginalFilename", "UsbipdTool.exe"
     END
   END

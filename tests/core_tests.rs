@@ -5,7 +5,6 @@ use usbipd_tool::core::actions::{attach_args, bind_args, bind_needs_force_hint, 
 use usbipd_tool::core::config::Config;
 use usbipd_tool::core::decode::decode_output;
 use usbipd_tool::core::i18n::{self, I18n};
-use usbipd_tool::core::icon::ico_png_entry;
 use usbipd_tool::core::models::DeviceState;
 use usbipd_tool::core::parser::*;
 
@@ -97,7 +96,12 @@ fn wsl_list_utf16le_and_utf8() {
 
     // 本机实际输出（WSL_UTF8=1 / 新版 wsl）：UTF-8
     let real = b"  NAME      STATE           VERSION\r\n* Ubuntu    Running         2\r\n";
-    assert_eq!(parse_wsl_default_distro(&decode_output(real)).as_deref(), Some("Ubuntu"));
+        assert_eq!(parse_wsl_distros_verbose(&vt), vec!["Ubuntu", "Debian"]);
+    assert_eq!(parse_wsl_distros_verbose(&decode_output(real)), vec!["Ubuntu"]);
+    assert!(parse_wsl_distros_verbose("  NAME      STATE           VERSION
+").is_empty());
+
+assert_eq!(parse_wsl_default_distro(&decode_output(real)).as_deref(), Some("Ubuntu"));
     assert_eq!(parse_wsl_default_distro("  NAME STATE\n  Ubuntu Running 2\n"), None);
     assert!(parse_wsl_distros_quiet("\u{feff}\r\n\r\n").is_empty());
 }
@@ -194,13 +198,6 @@ fn i18n_dictionaries_complete() {
     assert_eq!(i18n::lang_from_locale("en_US.UTF-8"), "en_US");
 }
 
-#[test]
-fn icon_png_entry() {
-    let ico = include_bytes!("../resources/icon.ico");
-    let png = ico_png_entry(ico, 64).expect("png entry");
-    assert!(png.starts_with(b"\x89PNG"));
-    assert!(ico_png_entry(b"nope", 64).is_none());
-}
 
 #[test]
 fn crate_version() {

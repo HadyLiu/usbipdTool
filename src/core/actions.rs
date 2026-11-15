@@ -1,7 +1,7 @@
 //! 高层操作：封装 usbipd 子命令（与原版 README 中的命令映射一致）。
 
 use super::models::{UsbDevice, WslDistro};
-use super::parser::{parse_list_text, parse_state_json, parse_wsl_default_distro, parse_wsl_distros_quiet};
+use super::parser::{parse_list_text, parse_state_json, parse_wsl_default_distro, parse_wsl_distros_quiet, parse_wsl_distros_verbose};
 use super::usbipd::{self, CommandResult};
 
 fn s(v: &[&str]) -> Vec<String> {
@@ -27,16 +27,26 @@ pub fn scan_devices() -> Result<(Vec<UsbDevice>, Option<String>), String> {
     Err(if e.is_empty() { "扫描失败".into() } else { e })
 }
 
-/// 列出 WSL 发行版并标记默认发行版；失败返回空列表。
-pub fn list_wsl_distros() -> Vec<WslDistro> {
+/// 只读列出已安装的 WSL 发行版并标记默认项。
+/// 只运行 `wsl --list`（`--verbose` / `--quiet`），不会 `--update` 或更改默认发行版。
+/// 两条列出命令都失败时返回 Err，供界面如实提示。
+pub fn list_wsl_distros() -> Result<Vec<WslDistro>, String> {
     let verbose = usbipd::run_wsl(&s(&["--list", "--verbose"]), 30);
-    let default_name = if verbose.ok() { parse_wsl_default_distro(&verbose.stdout) } else { None };
     let quiet = usbipd::run_wsl(&s(&["--list", "--quiet"]), 30);
-    let names = if quiet.ok() { parse_wsl_distros_quiet(&quiet.stdout) } else { Vec::new() };
-    names
+    if !verbose.ok() && !quiet.ok() {
+        let e = quiet.error_text();
+        let e = if e.is_empty() { verbose.error_text() } else { e };
+        return Err(if e.is_empty() { "wsl.exe --list failed".into() } else { e });
+    }
+    let default_name = if verbose.ok() { parse_wsl_default_distro(&verbose.stdout) } else { None };
+    let mut names = if quiet.ok() { parse_wsl_distros_quiet(&quiet.stdout) } else { Vec::new() };
+    if names.is_empty() && verbose.ok() {
+        names = parse_wsl_distros_verbose(&verbose.stdout);
+    }
+    Ok(names
         .into_iter()
         .map(|n| WslDistro { is_default: Some(&n) == default_name.as_ref(), name: n })
-        .collect()
+        .collect())
 }
 
 pub fn bind_args(busid: &str, force: bool) -> Vec<String> {

@@ -165,10 +165,14 @@ pub fn parse_wsl_distros_quiet(text: &str) -> Vec<String> {
         .collect()
 }
 
+fn trim_wsl_line(line: &str) -> &str {
+    line.trim().trim_matches('\u{feff}').trim_matches('\0').trim()
+}
+
 /// 从 `wsl.exe --list --verbose` 输出中找出默认发行版（行首带 `*`）。
 pub fn parse_wsl_default_distro(text: &str) -> Option<String> {
     for line in text.lines() {
-        let s = line.trim().trim_matches('\u{feff}').trim_matches('\0').trim();
+        let s = trim_wsl_line(line);
         if s.starts_with('*') {
             let parts: Vec<&str> = s.split_whitespace().collect();
             if parts.len() >= 2 {
@@ -177,6 +181,28 @@ pub fn parse_wsl_default_distro(text: &str) -> Option<String> {
         }
     }
     None
+}
+
+/// 从 `wsl.exe --list --verbose` 取出发行版名称（跳过表头；`*` 只是默认标记）。
+pub fn parse_wsl_distros_verbose(text: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    for line in text.lines() {
+        let s = trim_wsl_line(line);
+        if s.is_empty() {
+            continue;
+        }
+        let body = s.trim_start_matches('*').trim();
+        if body.is_empty() {
+            continue;
+        }
+        if body.to_ascii_uppercase().starts_with("NAME") {
+            continue;
+        }
+        if let Some(name) = body.split_whitespace().next() {
+            out.push(name.to_string());
+        }
+    }
+    out
 }
 
 /// 从 `usbipd --version` 输出取版本号（去掉 `+Branch...` 构建后缀）。
